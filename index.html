@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart E-Commerce Review System (with CAPTCHA)</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #f5f7fa, #c3cfe2);
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      text-align: center;
+      background: #2a2a72;
+      color: white;
+      padding: 1rem;
+      font-size: 1.5rem;
+    }
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      padding: 20px;
+    }
+    .product {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+      padding: 10px;
+      text-align: center;
+    }
+    .product img {
+      width: 100%;
+      height: 200px;
+      border-radius: 10px;
+      object-fit: cover;
+    }
+    .product button {
+      background-color: #2a2a72;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #productDetails {
+      display: none;
+      background: white;
+      margin: 20px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .rating-stars {
+      display: flex;
+      gap: 5px;
+      margin-top: 5px;
+    }
+    .rating-stars span {
+      font-size: 24px;
+      cursor: pointer;
+      color: #ccc;
+    }
+    .rating-stars span.selected {
+      color: gold;
+    }
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .review {
+      border-top: 1px solid #ccc;
+      padding: 10px 0;
+    }
+    .verified {
+      color: green;
+      font-weight: bold;
+    }
+    .delete-btn {
+      background-color: #d9534f;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .verify-btn, .otp-btn, .captcha-verify-btn {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      margin-left: 5px;
+      cursor: pointer;
+    }
+    .download-btn {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .captcha-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    #captchaCanvas {
+      border: 1px solid #888;
+      border-radius: 5px;
+      background: #f3f3f3;
+    }
+    .refresh-btn {
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>🛍️ Smart E-Commerce Review System</header>
+
+<div class="product-grid" id="productGrid"></div>
+
+<div id="productDetails">
+  <h2 id="pName"></h2>
+  <p id="pPrice"></p>
+
+  <label>Upload Real Product Image:</label>
+  <input type="file" id="reviewImage" accept="image/*">
+
+  <label>Phone Number:</label>
+  <div style="display:flex; align-items:center;">
+    <input type="tel" id="phoneInput" placeholder="Enter phone number">
+    <button class="otp-btn" onclick="sendOTP()">Send OTP</button>
+  </div>
+
+  <label>Enter OTP:</label>
+  <div style="display:flex; align-items:center;">
+    <input type="text" id="otpInput" placeholder="Enter OTP">
+    <button class="verify-btn" onclick="verifyPhone()">Verify Phone</button>
+  </div>
+
+  <label>Give Rating:</label>
+  <div class="rating-stars" id="starContainer"></div>
+
+  <label>Your Review:</label>
+  <textarea id="reviewText" rows="4" placeholder="Write your review..."></textarea>
+
+  <!-- CAPTCHA -->
+  <label>Enter CAPTCHA:</label>
+  <div class="captcha-box">
+    <canvas id="captchaCanvas" width="120" height="40"></canvas>
+    <button class="refresh-btn" onclick="generateCaptcha()">↻</button>
+  </div>
+  <input type="text" id="captchaInput" placeholder="Enter CAPTCHA here">
+  <button class="captcha-verify-btn" onclick="verifyCaptcha()">Verify CAPTCHA</button>
+
+  <div class="checkbox-container">
+    <input type="checkbox" id="confirmCheck">
+    <label for="confirmCheck">I confirm this review is genuine and made by me.</label>
+  </div>
+
+  <button class="download-btn" onclick="submitReview()">Submit Review</button>
+  <button class="download-btn" onclick="downloadProof()">Download Legal Proof</button>
+
+  <h3>Previous Reviews:</h3>
+  <div id="reviewList"></div>
+</div>
+
+<script>
+  const products = [
+    {id:1, name:"Men’s Jacket", price:"₹1999", img:"https://plus.unsplash.com/premium_photo-1665461701610-aca5609a08fb?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8bWVuJ3MlMjBqYWNrZXR8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&q=60&w=600"},
+    {id:2, name:"Women’s Dress", price:"₹2499", img:"https://images.unsplash.com/photo-1745750003448-ba149f954428?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fHdvbWVucyUyMGNhc3VhbCUyMGRyZXNzJTIwaW1hZ2VzfGVufDB8fDB8fHww&auto=format&fit=crop&q=60&w=600"},
+    {id:3, name:"Sneakers", price:"₹1799", img:"https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c25lYWtlcnN8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&q=60&w=600"},
+    {id:4, name:"Handbag", price:"₹1399", img:"https://plus.unsplash.com/premium_photo-1672829371769-bcff266023a4?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aGFuZGJhZ3xlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&q=60&w=600"}
+  ];
+
+  let reviews = {};
+  let selectedProduct = null;
+  let generatedOTP = null;
+  let phoneVerified = false;
+  let selectedRating = 0;
+  let captchaCode = "";
+  let captchaVerified = false;
+
+  const grid = document.getElementById('productGrid');
+  products.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'product';
+    div.innerHTML = `
+      <img src="${p.img}" alt="${p.name}">
+      <h3>${p.name}</h3>
+      <p>${p.price}</p>
+      <p>Reviews: <span id="reviewCount${p.id}">0</span></p>
+      <button onclick="viewProduct(${p.id})">View</button>
+    `;
+    grid.appendChild(div);
+  });
+
+  function viewProduct(id){
+    selectedProduct = id;
+    document.getElementById('productDetails').style.display = 'block';
+    const p = products.find(x=>x.id===id);
+    document.getElementById('pName').innerText = p.name;
+    document.getElementById('pPrice').innerText = "Price: " + p.price;
+    renderStars();
+    renderReviews();
+    generateCaptcha();
+  }
+
+  function renderStars(){
+    const container = document.getElementById('starContainer');
+    container.innerHTML = '';
+    for(let i=1;i<=5;i++){
+      const s=document.createElement('span');
+      s.textContent='★';
+      if(i<=selectedRating) s.classList.add('selected');
+      s.onclick=()=>{selectedRating=i;renderStars();}
+      container.appendChild(s);
+    }
+  }
+
+  function sendOTP(){
+    const phone=document.getElementById('phoneInput').value.trim();
+    if(phone===""){alert("Enter phone number");return;}
+    generatedOTP=Math.floor(1000+Math.random()*9000);
+    alert("Your OTP is: "+generatedOTP);
+  }
+
+  function verifyPhone(){
+    const otp=document.getElementById('otpInput').value;
+    if(otp==generatedOTP){phoneVerified=true;alert("✅ Phone Verified");}
+    else alert("❌ Invalid OTP");
+  }
+
+  function generateCaptcha(){
+    captchaVerified = false;
+    captchaCode = Math.random().toString(36).substring(2,8).toUpperCase();
+    const canvas = document.getElementById("captchaCanvas");
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.font = "22px monospace";
+    ctx.fillStyle = "#333";
+    ctx.fillText(captchaCode, 20, 28);
+  }
+
+  function verifyCaptcha(){
+    const input = document.getElementById('captchaInput').value.trim().toUpperCase();
+    if(input === captchaCode){
+      captchaVerified = true;
+      alert("✅ CAPTCHA Verified");
+    } else {
+      captchaVerified = false;
+      alert("❌ Wrong CAPTCHA");
+      generateCaptcha();
+    }
+  }
+
+  function calculatePatternScore(text){
+    const complex=text.match(/\b(however|therefore|furthermore|whereas|consequently)\b/gi);
+    const score=100-(complex?complex.length*20:0);
+    return Math.max(0,score);
+  }
+
+  function checkDuplicate(text){
+    for(let key in reviews){
+      if(reviews[key].some(r=>r.text===text)) return "Yes";
+    }
+    return "No";
+  }
+
+  function submitReview(){
+    const imgInput=document.getElementById('reviewImage');
+    const reviewText=document.getElementById('reviewText').value.trim();
+    const confirm=document.getElementById('confirmCheck').checked;
+
+    if(!imgInput.files[0] || reviewText==="" || !confirm || !phoneVerified || selectedRating===0 || !captchaVerified){
+      alert("Please complete all mandatory fields (Image, Phone+OTP, Rating, Review, CAPTCHA, Checkbox).");
+      return;
+    }
+
+    const reader=new FileReader();
+    reader.onload=function(e){
+      const imgURL=e.target.result;
+      const trust="✅ Human Verified";
+      const patternScore=calculatePatternScore(reviewText);
+      const duplicate=checkDuplicate(reviewText);
+      const reviewObj={img:imgURL,text:reviewText,rating:selectedRating,trust,patternScore,duplicate};
+
+      if(!reviews[selectedProduct]) reviews[selectedProduct]=[];
+      reviews[selectedProduct].push(reviewObj);
+      renderReviews();
+      document.getElementById(`reviewCount${selectedProduct}`).innerText=reviews[selectedProduct].length;
+      alert("✅ Review submitted successfully!");
+      generateCaptcha();
+    };
+    reader.readAsDataURL(imgInput.files[0]);
+  }
+
+  function renderReviews(){
+    const list=document.getElementById('reviewList');
+    list.innerHTML='';
+    const productReviews=reviews[selectedProduct]||[];
+    productReviews.forEach((r,idx)=>{
+      const div=document.createElement('div');
+      div.className='review';
+      div.innerHTML=`
+        <img src="${r.img}" width="80" height="80" style="object-fit:cover;border-radius:8px;"><br>
+        <b>${r.text}</b><br>
+        ⭐ ${r.rating}/5 <br>
+        <span class="verified">✔ Verified Customer</span><br>
+        Trust: ${r.trust}<br>
+        Pattern Score: ${r.patternScore}<br>
+        Duplicate: ${r.duplicate}<br>
+        <button class="delete-btn" onclick="deleteReview(${idx})">Delete</button>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  function deleteReview(index){
+    reviews[selectedProduct].splice(index,1);
+    renderReviews();
+    document.getElementById(`reviewCount${selectedProduct}`).innerText=reviews[selectedProduct].length;
+  }
+
+  function downloadProof(){
+    const proof={
+      product:selectedProduct,
+      ts:new Date().toISOString(),
+      deviceId:"dev-"+Math.random().toString(36).substring(2,10),
+      origin:"demo",
+      note:"Demo proof — not cryptographically signed."
+    };
+    const blob=new Blob([JSON.stringify(proof,null,2)],{type:"application/json"});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download="legal_proof.json";
+    a.click();
+  }
+</script>
+
+</body>
+</html>
